@@ -1,0 +1,48 @@
+{{define "login"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Sign in · RoomKey</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Karla:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="login-page">
+  <main class="login-shell">
+    <section class="login-brand" aria-label="RoomKey">
+      <div class="login-brand-inner">
+        <span class="eyebrow light">Hotel guest Wi-Fi</span>
+        <h1>Every room,<br>ready to connect.</h1>
+        <p>Create a guest account, set the checkout date, and hand over the key. OPNsense and RADIUS handle the rest.</p>
+        <div class="login-rule"></div>
+        <p class="login-small">Staff access only. Guest credentials are visible to signed-in front-desk staff.</p>
+      </div>
+    </section>
+    <section class="login-form-wrap">
+      <form class="login-form" method="post" action="/login" novalidate>
+        <div class="login-heading">
+          <span class="eyebrow">Front desk</span>
+          <h2>Sign in</h2>
+          <p>Use your staff account to manage guests.</p>
+        </div>
+        {{if .Error}}<div class="banner banner-error" role="alert">{{.Error}}</div>{{end}}
+        <label class="field">
+          <span>Username</span>
+          <input name="username" type="text" value="{{.User}}" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <button class="button primary wide" type="submit">Sign in</button>
+        <p class="login-foot">RoomKey · guest access console</p>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
+{{end}}

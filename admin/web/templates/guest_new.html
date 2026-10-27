@@ -1,0 +1,54 @@
+{{define "content"}}
+<header class="page-head">
+  <div>
+    <a class="back-link" href="/guests">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Guests
+    </a>
+    <h1>New guest</h1>
+    <p class="page-sub">One email, one account. The checkout date is enforced by RADIUS.</p>
+  </div>
+</header>
+
+<form class="form-card" method="post" action="/guests" novalidate>
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  {{if .Error}}<div class="banner banner-error" role="alert">{{.Error}}</div>{{end}}
+
+  <div class="form-grid">
+    <label class="field span-2">
+      <span>Guest email <em>required</em></span>
+      <input name="email" type="email" value="{{.Form.Email}}" placeholder="guest@example.com" autocomplete="email" autocapitalize="none" spellcheck="false" required>
+      <small>This is the guest's Wi-Fi username. One account per email.</small>
+    </label>
+    <label class="field">
+      <span>Room <em>required</em></span>
+      <input name="room" type="text" value="{{.Form.Room}}" placeholder="204" autocomplete="off" autocapitalize="characters" required>
+      <small>Letters, digits or hyphens. Kept for the front desk, not used as the username.</small>
+    </label>
+    <label class="field">
+      <span>Guest name <em>optional</em></span>
+      <input name="guest_name" type="text" value="{{.Form.GuestName}}" placeholder="A. Mansouri" autocomplete="off">
+    </label>
+    <label class="field">
+      <span>Checkout <em>required</em></span>
+      <input name="expires_at" type="datetime-local" value="{{.Form.ExpiresAt}}" required>
+      <small>Hotel time. Access ends at this moment.</small>
+    </label>
+    <label class="field">
+      <span>Max devices</span>
+      <input name="max_devices" type="number" min="1" max="10" step="1" value="{{.Form.MaxDevices}}" required>
+      <small>Enforced by RADIUS Simultaneous-Use.</small>
+    </label>
+    <label class="field span-2">
+      <span>Password <em>optional</em></span>
+      <input name="password" type="text" value="{{.Form.Password}}" placeholder="Leave blank to generate" autocomplete="new-password" spellcheck="false">
+      <small>Minimum 8 characters. Leave blank and RoomKey will generate a readable password.</small>
+    </label>
+  </div>
+
+  <div class="form-actions">
+    <button class="button primary" type="submit">Create guest</button>
+    <a class="button ghost" href="/guests">Cancel</a>
+  </div>
+</form>
+{{end}}

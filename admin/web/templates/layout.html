@@ -1,0 +1,56 @@
+{{define "layout"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>{{.Title}} · RoomKey</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Karla:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="app">
+    <aside class="sidebar">
+      <a class="brand" href="/guests" aria-label="RoomKey home">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+          <rect x="3" y="5" width="26" height="22" rx="4" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M10 21V13h5.5a4 4 0 0 1 0 8H10Z" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <circle cx="22.5" cy="12" r="1.4" fill="currentColor"/>
+        </svg>
+        <span class="brand-text">RoomKey<small>Front desk</small></span>
+      </a>
+      <nav class="nav" aria-label="Main">
+        <a class="nav-link {{if eq .ActiveNav "guests"}}is-active{{end}}" href="/guests">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19v-1a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v1M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          Guests
+        </a>
+        <a class="nav-link {{if eq .ActiveNav "new"}}is-active{{end}}" href="/guests/new">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          New guest
+        </a>
+      </nav>
+      <div class="sidebar-foot">
+        <span class="avatar" aria-hidden="true">{{printf "%.1s" .Admin}}</span>
+        <span class="who">{{.Admin}}<small>Signed in</small></span>
+        <form method="post" action="/logout">
+          <input type="hidden" name="csrf" value="{{.CSRF}}">
+          <button class="icon-button" type="submit" aria-label="Sign out" title="Sign out">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4M15 8l4 4-4 4M19 12H9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </form>
+      </div>
+    </aside>
+    <main id="main" class="main">
+      {{if .Flash}}<div class="banner banner-success" role="status">{{.Flash}}</div>{{end}}
+      {{if .Error}}<div class="banner banner-error" role="alert">{{.Error}}</div>{{end}}
+      {{template "content" .}}
+    </main>
+  </div>
+</body>
+</html>
+{{end}}

@@ -1,0 +1,42 @@
+# SQL module — rendered from env by entrypoint.sh (this file IS the template;
+# entrypoint renders it in place at /etc/freeradius/mods-enabled/sql).
+sql {
+	dialect = "postgresql"
+	driver = "rlm_sql_postgresql"
+
+	server = "${PGHOST}"
+	port = ${PGPORT}
+	login = "${POSTGRES_USER}"
+	password = "${POSTGRES_PASSWORD}"
+	radius_db = "${PG_DB_NAME}"
+
+	read_clients = no
+	client_table = "nas"
+
+	# Table names referenced by sql-queries.conf (same defaults as the
+	# stock mods-available/sql defines before its own $INCLUDE).
+	acct_table1 = "radacct"
+	acct_table2 = "radacct"
+	postauth_table = "radpostauth"
+	authcheck_table = "radcheck"
+	groupcheck_table = "radgroupcheck"
+	authreply_table = "radreply"
+	groupreply_table = "radgroupreply"
+	usergroup_table = "radusergroup"
+	# Attribute rlm_sql uses to expose group membership (stock default)
+	group_attribute = "SQL-Group"
+
+	# Pull in database-specific queries ($INCLUDE, NOT an "queries ="
+	# assignment -- rlm_sql has no such directive and silently ignores it).
+	$INCLUDE /etc/freeradius/sql-queries.conf
+
+	pool {
+		start = 5
+		min = 4
+		max = 10
+		spare = 3
+		uses = 0
+		lifetime = 0
+		idle_timeout = 60
+	}
+}

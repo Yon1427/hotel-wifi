@@ -1,0 +1,9 @@
+.env
+pgdata/
+admin/admin
+*.log
+*.md
+.playwright-mcp/
+qemu.pid
+portal-template/
+scripts/

@@ -1,0 +1,108 @@
+{{define "content"}}
+<header class="page-head">
+  <div>
+    <a class="back-link" href="/guests">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Guests
+    </a>
+    <div class="title-row">
+      <h1>{{if .Guest.GuestName}}{{.Guest.GuestName}}{{else}}Room {{.Guest.Room}}{{end}}</h1>
+      <span class="pill {{statusClass .Guest}}">{{.Guest.Status}}</span>
+    </div>
+    <p class="page-sub">Room {{.Guest.Room}} · {{daysLeft .Guest.ExpiresAt}}</p>
+  </div>
+</header>
+
+<div class="detail-grid">
+  <section class="card" aria-labelledby="credentials-title">
+    <div class="card-head">
+      <h2 id="credentials-title">Guest key</h2>
+      <span class="muted">Share these with the guest</span>
+    </div>
+    <dl class="key-list">
+      <div>
+        <dt>Email</dt>
+        <dd><code>{{.Guest.Username}}</code></dd>
+      </div>
+      <div>
+        <dt>Password</dt>
+        <dd class="copy-row">
+          <code id="guest-password">{{.Guest.Password}}</code>
+          <button class="icon-button" type="button" data-copy="#guest-password" aria-label="Copy password" title="Copy password">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+          </button>
+        </dd>
+      </div>
+      <div>
+        <dt>Check-in</dt>
+        <dd>{{datetime .Guest.CheckIn}}</dd>
+      </div>
+      <div>
+        <dt>Checkout</dt>
+        <dd>{{datetime .Guest.ExpiresAt}}</dd>
+      </div>
+      <div>
+        <dt>Max devices</dt>
+        <dd>{{.Guest.MaxDevices}}</dd>
+      </div>
+    </dl>
+    <p class="card-note">The password is stored for PAP authentication. Only signed-in staff can see this page.</p>
+  </section>
+
+  <aside class="card actions-card" aria-labelledby="actions-title">
+    <div class="card-head">
+      <h2 id="actions-title">Manage</h2>
+    </div>
+
+    <form method="post" action="/guests/{{.Guest.ID}}/status" class="stack">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      {{if eq .Guest.Status "ACTIVE"}}
+      <input type="hidden" name="action" value="disable">
+      <button class="button danger" type="submit">Disable access</button>
+      <small>Existing session ends at its next RADIUS timeout; use OPNsense to disconnect now.</small>
+      {{else}}
+      <input type="hidden" name="action" value="enable">
+      <button class="button" type="submit">Enable access</button>
+      <small>The guest can sign in again if the checkout date is in the future.</small>
+      {{end}}
+    </form>
+
+    <hr>
+
+    <form method="post" action="/guests/{{.Guest.ID}}/password" class="stack">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <label class="field compact">
+        <span>New password <em>optional</em></span>
+        <input name="password" type="text" placeholder="Leave blank to generate" autocomplete="new-password" spellcheck="false">
+      </label>
+      <button class="button" type="submit">Rotate password</button>
+    </form>
+
+    <hr>
+
+    <form method="post" action="/guests/{{.Guest.ID}}/expiry" class="stack">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <label class="field compact">
+        <span>Checkout</span>
+        <input name="expires_at" type="datetime-local" value="{{.ExpiryInput}}" required>
+      </label>
+      <button class="button" type="submit">Update checkout</button>
+    </form>
+  </aside>
+</div>
+
+<section class="card notes-card" aria-labelledby="notes-title">
+  <div class="card-head">
+    <h2 id="notes-title">Notes</h2>
+    <span class="muted">Internal only</span>
+  </div>
+  <form method="post" action="/guests/{{.Guest.ID}}/notes" class="stack">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <label class="field">
+      <span class="sr-only">Notes</span>
+      <textarea name="notes" rows="4" maxlength="500" placeholder="Late checkout, extra device, special request…">{{.Guest.Notes}}</textarea>
+    </label>
+    <div><button class="button ghost" type="submit">Save notes</button></div>
+  </form>
+</section>
+{{end}}
