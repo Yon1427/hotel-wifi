@@ -30,8 +30,38 @@ func TestMessage(t *testing.T) {
 			t.Fatalf("missing %q in message:\n%s", want, b)
 		}
 	}
+	for _, want := range []string{
+		"Content-Type: multipart/alternative; boundary=\"hotel-wifi-alt-1\"",
+		"Content-Type: text/plain; charset=UTF-8",
+		"Content-Type: text/html; charset=UTF-8",
+		"<h1 style=",
+		"--hotel-wifi-alt-1--",
+	} {
+		if !strings.Contains(b, want) {
+			t.Fatalf("missing %q in message", want)
+		}
+	}
 	if strings.Contains(strings.ReplaceAll(b, "\r\n", ""), "\n") {
 		t.Fatal("message contains a bare LF")
+	}
+}
+
+func TestHTMLEscape(t *testing.T) {
+	c := Config{From: "wifi@hotel.test"}
+	b := string(c.message(Message{
+		To:       "guest@example.com",
+		Hotel:    "<b>Hotel</b>",
+		Room:     "204",
+		Username: "guest@example.com",
+		Password: "<script>x</script>",
+		Expires:  time.Now(),
+	}))
+	htmlPart := b[strings.Index(b, "Content-Type: text/html"):]
+	if strings.Contains(htmlPart, "<script>x</script>") || strings.Contains(htmlPart, "<b>Hotel</b>") {
+		t.Fatal("dynamic values are not HTML-escaped")
+	}
+	if !strings.Contains(htmlPart, "&lt;b&gt;Hotel&lt;/b&gt;") {
+		t.Fatal("escaped hotel name missing")
 	}
 }
 
