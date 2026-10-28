@@ -21,8 +21,14 @@ import (
 
 	"github.com/lib/pq"
 
+	guestmail "hotel/admin/internal/mail"
 	"hotel/admin/internal/store"
 )
+
+// Mailer delivers guest credentials. *mail.Config satisfies it.
+type Mailer interface {
+	Send(guestmail.Message) error
+}
 
 type Config struct {
 	Store         *store.Store
@@ -30,6 +36,8 @@ type Config struct {
 	SecureCookies bool
 	TrustProxy    bool
 	HotelTZ       *time.Location
+	Mailer        Mailer
+	HotelName     string
 }
 
 type Server struct {
@@ -40,6 +48,8 @@ type Server struct {
 	tz         *time.Location
 	secure     bool
 	trustProxy bool
+	mailer     Mailer
+	hotelName  string
 	dummy      string
 	webDir     string
 }
@@ -93,6 +103,9 @@ func New(cfg Config) (*Server, error) {
 	if cfg.HotelTZ == nil {
 		cfg.HotelTZ = time.UTC
 	}
+	if cfg.HotelName == "" {
+		cfg.HotelName = "Hotel"
+	}
 	s := &Server{
 		store:      cfg.Store,
 		sessions:   newSessionStore(),
@@ -101,6 +114,8 @@ func New(cfg Config) (*Server, error) {
 		tz:         cfg.HotelTZ,
 		secure:     cfg.SecureCookies,
 		trustProxy: cfg.TrustProxy,
+		mailer:     cfg.Mailer,
+		hotelName:  cfg.HotelName,
 		webDir:     cfg.WebDir,
 	}
 	var err error
@@ -384,7 +399,35 @@ func (s *Server) handleGuestNewPost(w http.ResponseWriter, r *http.Request) {
 		s.render(w, "guest_new", formData{baseData: s.base(r, "New guest", "new"), Form: f, Error: "Could not create the guest. Try again."})
 		return
 	}
-	http.Redirect(w, r, "/guests/"+g.ID+"?created=1", http.StatusSeeOther)
+	sent := s.emailGuest(g, password)
+	param := "created=nomail"
+	if sent {
+		param = "created=mail"
+	}
+	http.Redirect(w, r, "/guests/"+g.ID+"?"+param, http.StatusSeeOther)
+}
+
+// emailGuest sends the guest credentials and reports whether they were accepted.
+// A failure never blocks the guest creation; staff can still read the password.
+func (s *Server) emailGuest(g store.Guest, password string) bool {
+	if s.mailer == nil {
+		slog.Warn("guest email not sent: SMTP is not configured", "guest", g.Username)
+		return false
+	}
+	err := s.mailer.Send(guestmail.Message{
+		To:       g.Username,
+		Hotel:    s.hotelName,
+		Room:     g.Room,
+		Username: g.Username,
+		Password: password,
+		Expires:  g.ExpiresAt,
+		TZ:       s.tz,
+	})
+	if err != nil {
+		slog.Warn("guest email failed", "guest", g.Username, "err", err)
+		return false
+	}
+	return true
 }
 
 func (s *Server) handleGuestDetail(w http.ResponseWriter, r *http.Request) {
@@ -401,10 +444,16 @@ func (s *Server) handleGuestDetail(w http.ResponseWriter, r *http.Request) {
 		Expired:     !g.ExpiresAt.After(time.Now()),
 	}
 	switch r.URL.Query().Get("created") {
-	case "1":
-		d.Flash = "Guest created. Give the username and password to the guest."
-	case "rotated":
-		d.Flash = "Password rotated. Give the new password to the guest."
+	case "mail":
+		d.Flash = "Guest created. Credentials emailed to " + g.Username + "."
+	case "nomail":
+		d.Flash = "Guest created, but the email was not sent. Give the credentials to the guest."
+	}
+	switch r.URL.Query().Get("rotated") {
+	case "mail":
+		d.Flash = "Password rotated. New password emailed to " + g.Username + "."
+	case "nomail":
+		d.Flash = "Password rotated, but the email was not sent. Give the new password to the guest."
 	}
 	s.render(w, "guest_detail", d)
 }
@@ -444,7 +493,11 @@ func (s *Server) handleGuestPassword(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "/guests/"+g.ID+"?rotated=1", http.StatusSeeOther)
+	param := "rotated=nomail"
+	if s.emailGuest(g, pw) {
+		param = "rotated=mail"
+	}
+	http.Redirect(w, r, "/guests/"+g.ID+"?"+param, http.StatusSeeOther)
 }
 
 func (s *Server) handleGuestExpiry(w http.ResponseWriter, r *http.Request) {

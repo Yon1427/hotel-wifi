@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"hotel/admin/internal/mail"
 	"hotel/admin/internal/store"
 	"hotel/admin/internal/web"
 )
@@ -68,12 +69,30 @@ func main() {
 		slog.Info("created initial admin", "username", user)
 	}
 
+	mailCfg := mail.Config{
+		Host:     os.Getenv("SMTP_HOST"),
+		Port:     env("SMTP_PORT", "587"),
+		User:     os.Getenv("SMTP_USER"),
+		Password: os.Getenv("SMTP_PASSWORD"),
+		From:     os.Getenv("SMTP_FROM"),
+		Mode:     env("SMTP_TLS", "starttls"),
+	}
+	var mailer web.Mailer
+	if mailCfg.Enabled() {
+		mailer = mailCfg
+		slog.Info("guest email enabled", "host", mailCfg.Host, "from", mailCfg.From)
+	} else {
+		slog.Warn("guest email disabled: set SMTP_HOST and SMTP_FROM")
+	}
+
 	srv, err := web.New(web.Config{
 		Store:         st,
 		WebDir:        webDir,
 		SecureCookies: envBool("ADMIN_SECURE_COOKIES", false),
 		TrustProxy:    envBool("ADMIN_TRUST_PROXY", false),
 		HotelTZ:       tz,
+		Mailer:        mailer,
+		HotelName:     env("HOTEL_NAME", "Hotel"),
 	})
 	if err != nil {
 		slog.Error("init web", "err", err)
