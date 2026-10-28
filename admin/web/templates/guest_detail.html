@@ -17,21 +17,12 @@
   <section class="card" aria-labelledby="credentials-title">
     <div class="card-head">
       <h2 id="credentials-title">Guest key</h2>
-      <span class="muted">Emailed to the guest; share manually if needed</span>
+      <span class="muted">Password sent by email only</span>
     </div>
     <dl class="key-list">
       <div>
         <dt>Email</dt>
         <dd><code>{{.Guest.Username}}</code></dd>
-      </div>
-      <div>
-        <dt>Password</dt>
-        <dd class="copy-row">
-          <code id="guest-password">{{.Guest.Password}}</code>
-          <button class="icon-button" type="button" data-copy="#guest-password" aria-label="Copy password" title="Copy password">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
-          </button>
-        </dd>
       </div>
       <div>
         <dt>Check-in</dt>
@@ -46,7 +37,7 @@
         <dd>{{.Guest.MaxDevices}}</dd>
       </div>
     </dl>
-    <p class="card-note">The password is stored for PAP authentication. Only signed-in staff can see this page.</p>
+    <p class="card-note">The password is generated automatically, sent to the guest by email, and cannot be viewed here. Use Resend email if it did not arrive.</p>
   </section>
 
   <aside class="card actions-card" aria-labelledby="actions-title">
@@ -69,13 +60,10 @@
 
     <hr>
 
-    <form method="post" action="/guests/{{.Guest.ID}}/password" class="stack">
+    <form method="post" action="/guests/{{.Guest.ID}}/resend" class="stack">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <label class="field compact">
-        <span>New password <em>optional</em></span>
-        <input name="password" type="text" placeholder="Leave blank to generate" autocomplete="new-password" spellcheck="false">
-      </label>
-      <button class="button" type="submit">Rotate password</button>
+      <button class="button" type="submit">Resend password email</button>
+      <small>Sends the existing password to {{.Guest.Username}}.</small>
     </form>
 
     <hr>

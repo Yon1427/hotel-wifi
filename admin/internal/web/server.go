@@ -74,7 +74,6 @@ type guestForm struct {
 	Email      string
 	Room       string
 	GuestName  string
-	Password   string
 	ExpiresAt  string
 	MaxDevices string
 }
@@ -153,7 +152,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /guests", s.auth(s.handleGuestNewPost))
 	mux.HandleFunc("GET /guests/{id}", s.auth(s.handleGuestDetail))
 	mux.HandleFunc("POST /guests/{id}/status", s.auth(s.handleGuestStatus))
-	mux.HandleFunc("POST /guests/{id}/password", s.auth(s.handleGuestPassword))
+	mux.HandleFunc("POST /guests/{id}/resend", s.auth(s.handleGuestResend))
 	mux.HandleFunc("POST /guests/{id}/expiry", s.auth(s.handleGuestExpiry))
 	mux.HandleFunc("POST /guests/{id}/notes", s.auth(s.handleGuestNotes))
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir(filepath.Join(s.webDir, "static")))))
@@ -371,7 +370,6 @@ func (s *Server) handleGuestNewPost(w http.ResponseWriter, r *http.Request) {
 		Email:      strings.ToLower(strings.TrimSpace(r.FormValue("email"))),
 		Room:       strings.ToUpper(strings.TrimSpace(r.FormValue("room"))),
 		GuestName:  strings.TrimSpace(r.FormValue("guest_name")),
-		Password:   r.FormValue("password"),
 		ExpiresAt:  r.FormValue("expires_at"),
 		MaxDevices: strings.TrimSpace(r.FormValue("max_devices")),
 	}
@@ -381,10 +379,7 @@ func (s *Server) handleGuestNewPost(w http.ResponseWriter, r *http.Request) {
 		s.render(w, "guest_new", formData{baseData: s.base(r, "New guest", "new"), Form: f, Error: err.Error()})
 		return
 	}
-	password := f.Password
-	if password == "" {
-		password = randomGuestPassword(8)
-	}
+	password := randomGuestPassword(8)
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 	g, err := s.store.CreateGuest(ctx, f.Email, f.Room, f.GuestName, password, exp, maxDevices)
@@ -436,6 +431,7 @@ func (s *Server) handleGuestDetail(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, err)
 		return
 	}
+	g.Password = "" // never render or leak the credential
 	d := detailData{
 		baseData:    s.base(r, "Room "+g.Room, "guests"),
 		Guest:       g,
@@ -445,15 +441,15 @@ func (s *Server) handleGuestDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.URL.Query().Get("created") {
 	case "mail":
-		d.Flash = "Guest created. Credentials emailed to " + g.Username + "."
+		d.Flash = "Guest created. Password emailed to " + g.Username + "."
 	case "nomail":
-		d.Flash = "Guest created, but the email was not sent. Give the credentials to the guest."
+		d.Flash = "Guest created, but the email was not sent. Use Resend email."
 	}
-	switch r.URL.Query().Get("rotated") {
+	switch r.URL.Query().Get("resent") {
 	case "mail":
-		d.Flash = "Password rotated. New password emailed to " + g.Username + "."
+		d.Flash = "Password email resent to " + g.Username + "."
 	case "nomail":
-		d.Flash = "Password rotated, but the email was not sent. Give the new password to the guest."
+		d.Flash = "The email could not be sent. Try again."
 	}
 	s.render(w, "guest_detail", d)
 }
@@ -475,27 +471,15 @@ func (s *Server) handleGuestStatus(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/guests/"+g.ID, http.StatusSeeOther)
 }
 
-func (s *Server) handleGuestPassword(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleGuestResend(w http.ResponseWriter, r *http.Request) {
 	g, err := s.getGuest(r)
 	if err != nil {
 		s.notFound(w, err)
 		return
 	}
-	pw := r.FormValue("password")
-	if pw == "" {
-		pw = randomGuestPassword(8)
-	}
-	if len(pw) < 8 {
-		http.Error(w, "password must be at least 8 characters", http.StatusBadRequest)
-		return
-	}
-	if err := s.store.RotatePassword(r.Context(), g.ID, pw); err != nil {
-		http.Error(w, "database error", http.StatusInternalServerError)
-		return
-	}
-	param := "rotated=nomail"
-	if s.emailGuest(g, pw) {
-		param = "rotated=mail"
+	param := "resent=nomail"
+	if s.emailGuest(g, g.Password) {
+		param = "resent=mail"
 	}
 	http.Redirect(w, r, "/guests/"+g.ID+"?"+param, http.StatusSeeOther)
 }
@@ -567,9 +551,6 @@ func validateGuestForm(f guestForm, tz *time.Location) (time.Time, int, error) {
 	}
 	if len(f.GuestName) > 80 {
 		return time.Time{}, 0, errors.New("guest name is too long")
-	}
-	if f.Password != "" && len(f.Password) < 8 {
-		return time.Time{}, 0, errors.New("password must be at least 8 characters")
 	}
 	exp, err := time.ParseInLocation("2006-01-02T15:04", f.ExpiresAt, tz)
 	if err != nil {

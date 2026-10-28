@@ -24,7 +24,4 @@ func TestValidateGuestForm(t *testing.T) {
 	if _, _, err := validateGuestForm(guestForm{Email: "guest@example.com", Room: "204", ExpiresAt: expiry, MaxDevices: "0"}, time.UTC); err == nil {
 		t.Fatal("zero devices accepted")
 	}
-	if _, _, err := validateGuestForm(guestForm{Email: "guest@example.com", Room: "204", ExpiresAt: expiry, MaxDevices: "2", Password: "short"}, time.UTC); err == nil {
-		t.Fatal("short guest password accepted")
-	}
 }

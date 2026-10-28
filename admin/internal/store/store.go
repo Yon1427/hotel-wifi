@@ -140,11 +140,6 @@ func (s *Store) SetStatus(ctx context.Context, id, status string) error {
 	return err
 }
 
-func (s *Store) RotatePassword(ctx context.Context, id, password string) error {
-	_, err := s.db.ExecContext(ctx, `UPDATE guests SET password=$2 WHERE id=$1`, id, password)
-	return err
-}
-
 func (s *Store) UpdateExpiry(ctx context.Context, id string, expiresAt time.Time) error {
 	_, err := s.db.ExecContext(ctx, `UPDATE guests SET expires_at=$2 WHERE id=$1`, id, expiresAt)
 	return err
